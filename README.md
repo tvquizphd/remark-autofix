@@ -1,7 +1,7 @@
 # remark-autofix
 
-![Node.js CI](https://github.com/tvquizphd/remark-autofix/workflows/Node.js%20CI/badge.svg)
-![Node.js Package](https://github.com/tvquizphd/remark-autofix/workflows/Node.js%20Package/badge.svg)
+[![Tests](https://github.com/tvquizphd/remark-autofix/workflows/Node.js%20CI/badge.svg)](https://github.com/tvquizphd/remark-autofix/actions?query=workflow%3A%22Node.js+CI%22)
+[![Package](https://github.com/tvquizphd/remark-autofix/workflows/Node.js%20Package/badge.svg)](https://github.com/tvquizphd/remark-autofix/actions?query=workflow%3A%22Node.js+Package%22)
 
 This project, `remark-autofix`, is a [remark](https://github.com/remarkjs/remark) plugin
 to apply fixes from warnings raised by [retext](https://github.com/retextjs/retext) plugins.
