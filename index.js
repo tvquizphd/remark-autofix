@@ -1,15 +1,14 @@
 const remark_retext = require("remark-retext");
 const retext_english = require("retext-english");
 const retext_stringify = require("retext-stringify");
-const paragraph_to_md = require("mdast-util-to-markdown/lib/handle/paragraph");
-const configure = require("mdast-util-to-markdown/lib/configure");
-const unified = require("unified");
-const unist_position = require("unist-util-position");
-const unist_visit_parents = require("unist-util-visit-parents");
 const unist_remove_position = require("unist-util-remove-position");
+const unist_visit_parents = require("unist-util-visit-parents");
+const unist_position = require("unist-util-position");
 const unist_filter = require("unist-util-filter");
-const unist_map = require("unist-util-map");
+const unist_remove = require("unist-util-remove");
+const unist_visit = require("unist-util-visit");
 const unist_is = require("unist-util-is");
+const unified = require("unified");
 
 const is_overlap = ([start, end], [_start, _end]) => {
   if ([_start, start, end, _end].some((v) => v == null)) {
@@ -146,7 +145,7 @@ const extract_fixes = (mdast, treeMap, file) => {
         }
         return false;
       };
-      const nlcst_children = tree_to_children(nlcst, (node) => {
+      const nlcst_children = nlcst_to_children(nlcst, (node) => {
         const in_list = nlcst_list.includes(node);
         return in_list || child_in_list(node.children);
       });
@@ -178,7 +177,7 @@ const extract_fixes = (mdast, treeMap, file) => {
   return fixes;
 };
 
-const tree_to_children = (tree, callback = null) => {
+const nlcst_to_children = (tree, callback = null) => {
   const children = [];
   if (!tree) {
     return children;
@@ -199,9 +198,9 @@ const tree_to_children = (tree, callback = null) => {
   return children;
 };
 
-const string_to_children = (str) => {
+const text_to_children = (str) => {
   const tree = text_to_nlcst.runSync(text_to_nlcst.parse(str));
-  return tree_to_children(tree, (node) => {
+  return nlcst_to_children(tree, (node) => {
     unist_remove_position(node);
     return true;
   });
@@ -224,7 +223,7 @@ const find_mode = (arr) => {
 const check_fixes = (fixes, treeMap) => {
   const childrenMap = new Map();
   fixes.forEach(({ expected, max_priority, mdast_list }) => {
-    const new_children = string_to_children(find_mode(expected));
+    const new_children = text_to_children(find_mode(expected));
     const priority_node = mdast_list.find((v) => {
       return v.priority >= max_priority;
     }).node;
@@ -305,8 +304,9 @@ const nlcst_to_text = unified().use(retext_stringify);
 
 const p_to_nlcst = unified().use(remark_retext, retext_english.Parser);
 
-const paragraph_handler = (state, p, parent, context) => {
+const paragraph_handler = (p, file) => {
   let fixMap = new Map();
+  // Extract all fixes from computed nlcst
   p_to_nlcst()
     .use(() => {
       return (tree, file) => {
@@ -325,61 +325,34 @@ const paragraph_handler = (state, p, parent, context) => {
         return tree;
       };
     })
-    .runSync(p, state.file);
-  const new_p = unist_filter(
-    unist_map(p, (node) => {
-      const is_literal = node.value != null;
-      if (!is_literal) {
-        return node;
-      }
-      if (fixMap.has(node)) {
-        node.value = fixMap.get(node);
-      }
+    .runSync(p, file);
+  // Apply all the fixes to all of the mdast nodes
+  unist_visit(p, (node) => {
+    const is_literal = node.value != null;
+    if (!is_literal) {
       return node;
-    }),
-    // Removes all empty literal nodes
-    // Such as when *dup* *dup* -> *dup* **
-    (node) => {
-      const is_literal = node.value != null;
-      if (!is_literal) {
-        return true;
-      }
-      return node.value !== "";
     }
-  );
-  if (new_p != null) {
-    return paragraph_to_md(new_p, parent, context);
-  }
+    if (fixMap.has(node)) {
+      node.value = fixMap.get(node);
+    }
+    return node;
+  })
+  // Removes all empty literal nodes
+  // Such as when *dup* *dup* -> *dup* **
+  unist_remove(p, (node) => {
+    const is_literal = node.value != null;
+    if (!is_literal) {
+      return false;
+    }
+    return node.value === "";
+  });
 };
 
 function remark_autofix () {
-  const data = this.data();
-  const autofixState = {};
-  add(
-    "toMarkdownExtensions",
-    configure(
-      {
-        handlers: {
-          paragraph: (...args) => {
-            return paragraph_handler(autofixState, ...args);
-          }
-        },
-        join: [],
-        unsafe: [],
-        options: {}
-      },
-      {
-        extensions: []
-      }
-    )
-  );
-  function add(field, value) {
-    /* istanbul ignore if - other extensions. */
-    if (data[field]) data[field].push(value);
-    else data[field] = [value];
-  }
   return (tree, file) => {
-    autofixState.file = file;
+    unist_visit(tree, 'paragraph', (p) => {
+      paragraph_handler(p, file)
+    });
     return tree;
   };
 };

@@ -18,6 +18,15 @@ yarn add remark-autofix
 
 ## Usage Examples
 
+**NOTE** Calls to [processor.use](https://github.com/unifiedjs/unified#processoruseplugin-options)
+must occur in the following order with the following aruements:
+
+1. `use(remark2retext, unified().use(...).use(...)...)`
+  - the repeated `use` calls marked by `...` must define a `retext` processor
+  - the `retext` processor must emit vfile messages with `expected` values
+2. `use(autofix)`
+
+
 ### Fix repeated words in Markdown
 
 With [retext-repeated-words](https://github.com/retextjs/retext-repeated-words):
@@ -25,17 +34,18 @@ With [retext-repeated-words](https://github.com/retextjs/retext-repeated-words):
 ```js
 const remark = require('remark');
 const unified = require('unified');
-const repeated = require('retext-repeated-words');
+const english = require('retext-english');
 const remark2retext = require('remark-retext');
+const repeated = require('retext-repeated-words');
 const autofix = require('remark-autofix');
 
 const inputMarkdown = `## Example
 This link [link](https://example.com/) is duplicated.
 `
-const processor = remark().use(autofix).use(
+const processor = remark().use(
   remark2retext,
   unified().use(english).use(repeated)
-);
+).use(autofix);
 
 const outputMarkdown = processor.processSync(inputMarkdown).toString();
 ```
