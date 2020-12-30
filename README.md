@@ -43,8 +43,7 @@ const inputMarkdown = `## Example
 This link [link](https://example.com/) is not not duplicated.
 `
 const processor = remark().use(
-  remark2retext,
-  unified().use(english).use(repeated)
+  remark2retext, unified().use(english).use(repeated)
 ).use(autofix);
 
 const outputMarkdown = processor.processSync(inputMarkdown).toString();
