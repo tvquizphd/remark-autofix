@@ -23,7 +23,7 @@ must occur in the following order with the following aruements:
 
 1. `use(remark2retext, unified().use(...).use(...)...)`
     - the repeated `use` calls marked by `...` must define a `retext` processor
-    - the `retext` processor must emit vfile messages with `expected` values
+    - the `retext` processor should emit vfile messages with `expected` values
 2. `use(autofix)`
 
 
