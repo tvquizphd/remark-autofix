@@ -40,7 +40,7 @@ const repeated = require('retext-repeated-words');
 const autofix = require('remark-autofix');
 
 const inputMarkdown = `## Example
-This link [link](https://example.com/) is duplicated.
+This link [link](https://example.com/) is not not duplicated.
 `
 const processor = remark().use(
   remark2retext,
@@ -55,7 +55,7 @@ The `outputMarkdown` should be:
 ```md
 ## Example
 
-This [link](https://example.com/) is duplicated.
+This [link](https://example.com/) is not duplicated.
 
 ```
 
