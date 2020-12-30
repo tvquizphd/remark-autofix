@@ -18,14 +18,14 @@ describe("remark-autofix", () => {
     return processor.use(autofix).processSync(input).toString()
   };
 
-  it("should remove doubled word, keeping link", () => {
-    const input = "This link [link](https://example.com/) is duplicated.";
-    const expected = "This [link](https://example.com/) is duplicated.\n";
+  it("remove doubled word, keeping link", () => {
+    const input = "This link [link](https://example.com/) is not not duplicated.";
+    const expected = "This [link](https://example.com/) is not duplicated.\n";
     const output = process(input, 1);
     expect(output).toBe(expected);
   });
 
-  it("should remove repeated words across two paragraphs", () => {
+  it("remove repeated words across two paragraphs", () => {
     const input = `A-well, a bird bird bird bird is the word
 
 Ma ma mow, pa pa, ma ma mow, pa pa
