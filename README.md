@@ -111,7 +111,7 @@ Return:
   - (String or null)
 
 For supported plugins, each `message` has the following relevant custom properties in addition to the `vfile-message` standard:
-  - `actual` string identifying the string in the `vfile` that should be altered or removed.
+  - `actual` string identifying the part of the `vfile` that should be altered or removed.
   - `expected` array of strings. For certain plugins, the array may be empty to indicate that the `actual` value should be removed.
 
 If null is returned, the message will be ignored. If a string is returned, this plugin will attempt to fix `mdast` `Literal` nodes within `message.location`, replacing `actual` text with the returned text. If multiple messages have overlapping `location` ranges, this plugin will cover the full extent of the overlapping `location` ranges with the mode of returned strings for that `location` range, preserving the `mdast` nodes with the most formatting. If there is no mode, the string from the first message raised will be used.
