@@ -39,7 +39,7 @@ yarn add remark-autofix
 method must occur in the following order with the following arguments:
 
 1. `use(remark2retext, retextProcessor)`
-    - The `retextProcessor` must define a `retext` processor, which should emit `vfile` messages with arrays of `expected` strings
+    - The `retextProcessor` must define a `retext` processor, which should emit `vfile` messages.
 2. `use(autofix[, options])`
     - for the options parameter, see the [API](https://github.com/tvquizphd/remark-autofix#API).
 
