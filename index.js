@@ -64,7 +64,7 @@ const match_tree_literals = (tree, offsets = [], ancestor = "") => {
   return literals;
 };
 
-const extract_fixes = (mdast, treeMap, file) => {
+const extract_fixes = (mdast, treeMap, options) => {
   let fixes = [];
   const last_mdast_i = treeMap.size - 1;
   const mdast_nodes = Array.from(treeMap.keys());
@@ -72,17 +72,30 @@ const extract_fixes = (mdast, treeMap, file) => {
   const min_start = mdast_nodes[0].position.start.offset;
   const max_end = mdast_nodes[last_mdast_i].position.end.offset;
   const accepted = [
+    "retext-spell",
+    "retext-quotes",
+    "retext-diacritics",
+    "retext-contractions",
     "retext-repeated-words",
     "retext-sentence-spacing",
-    "retext-spell"
+    "retext-indefinite-article",
+    "retext-redundant-acronyms"
   ];
+  const { file, fixers } = options;
+  Object.keys(fixers).forEach((key) => {
+    accepted.push(key);
+  })
+  const default_fixer = ({expected}) => {
+    return (expected?.length)? expected[0] : null
+  }
   const copySpellMap = new Map();
   file.messages.forEach((message) => {
     if (accepted.includes(message.source)) {
+      const fixer = fixers[message.source] || default_fixer;
       let [start, end, expected] = [
         message.location.start.offset,
         message.location.end.offset,
-        message.expected[0]
+        fixer(message)
       ];
       if (message.source === "retext-spell") {
         if (expected) {
@@ -118,6 +131,11 @@ const extract_fixes = (mdast, treeMap, file) => {
       },
       [[], []]
     );
+    /*if (to_merge.length > 0) {
+      if (to_merge[0].expected.length > 1) {
+        console.log('TODO')
+      }
+    }*/
     to_keep.push({
       expected: fix.expected.concat(...to_merge.map((_fix) => _fix.expected)),
       start: Math.min(fix.start, ...to_merge.map((_fix) => _fix.start)),
@@ -207,7 +225,10 @@ const text_to_children = (str) => {
 };
 
 const find_mode = (arr) => {
-  return arr.reduce(
+  if (arr.length == 1) {
+    return arr[0]
+  }
+  const {mode, maxFreq, vMapping} = arr.reduce(
     (state, item) => {
       var val = (state.vMapping[item] = (state.vMapping[item] || 0) + 1);
       if (val > state.maxFreq) {
@@ -217,13 +238,23 @@ const find_mode = (arr) => {
       return state;
     },
     { mode: null, maxFreq: -Infinity, vMapping: {} }
-  ).mode;
+  );
+  const minFreq = Math.min(...Object.values(vMapping))
+  if (minFreq == maxFreq) {
+    return null
+  }
+  return mode
 };
 
 const check_fixes = (fixes, treeMap) => {
   const childrenMap = new Map();
   fixes.forEach(({ expected, max_priority, mdast_list }) => {
-    const new_children = text_to_children(find_mode(expected));
+    let expected_string = find_mode(expected)
+    if (expected_string == null) {
+      // Use first expected value if no mode
+      expected_string = expected[0] || ''
+    }
+    const new_children = text_to_children(expected_string);
     const priority_node = mdast_list.find((v) => {
       return v.priority >= max_priority;
     }).node;
@@ -292,8 +323,8 @@ const check_fixes = (fixes, treeMap) => {
           return children;
         }, []);
       });
-      const new_value = nlcst_to_text.stringify(nlcst);
-      fixMap.set(node, new_value);
+      const new_string = nlcst_to_text.stringify(nlcst);
+      fixMap.set(node, new_string);
     }
   });
   return fixMap;
@@ -304,12 +335,12 @@ const nlcst_to_text = unified().use(retext_stringify);
 
 const p_to_nlcst = unified().use(remark_retext, retext_english.Parser);
 
-const paragraph_handler = (p, file) => {
+const paragraph_handler = (p, options) => {
   let fixMap = new Map();
   // Extract all fixes from computed nlcst
   p_to_nlcst()
     .use(() => {
-      return (tree, file) => {
+      return (tree, _) => {
         const mdast_list = match_tree_literals(p, [], "paragraph");
         const treeMap = mdast_list.reduce((tree_map, mdast) => {
           const subtree = unist_filter(tree, (node) => {
@@ -320,12 +351,12 @@ const paragraph_handler = (p, file) => {
           }
           return tree_map;
         }, new Map());
-        const fixes = extract_fixes(p, treeMap, file);
+        const fixes = extract_fixes(p, treeMap, options);
         fixMap = check_fixes(fixes, treeMap);
         return tree;
       };
     })
-    .runSync(p, file);
+    .runSync(p, options.file);
   // Apply all the fixes to all of the mdast nodes
   unist_visit(p, (node) => {
     const is_literal = node.value != null;
@@ -348,10 +379,13 @@ const paragraph_handler = (p, file) => {
   });
 };
 
-function remark_autofix () {
+function remark_autofix (options) {
   return (tree, file) => {
     unist_visit(tree, 'paragraph', (p) => {
-      paragraph_handler(p, file)
+      paragraph_handler(p, {
+        fixers: {},
+        ...options, file
+      })
     });
     return tree;
   };

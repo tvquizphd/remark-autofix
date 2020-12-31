@@ -1,7 +1,7 @@
 {
   "name": "remark-autofix",
   "description": "A remark plugin to apply fixes from warnings raised by other plugins",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "index.js",
   "license": "MIT",
   "repository": {
@@ -16,18 +16,26 @@
     "remark-retext": "^4.0.0",
     "retext-english": "^3.0.4",
     "retext-stringify": "^2.0.4",
-    "unist-util-remove-position": "^3.0.0",
-    "unist-util-visit-parents": "^3.1.1",
-    "unist-util-position": "^3.1.0",
+    "unified": "^9.2.0",
     "unist-util-filter": "^2.0.3",
-    "unist-util-remove": "^2.0.1",
-    "unist-util-visit": "^2.0.3",
     "unist-util-is": "^4.0.4",
-    "unified": "^9.2.0"
+    "unist-util-position": "^3.1.0",
+    "unist-util-remove": "^2.0.1",
+    "unist-util-remove-position": "^3.0.0",
+    "unist-util-visit": "^2.0.3",
+    "unist-util-visit-parents": "^3.1.1"
   },
   "devDependencies": {
+    "dictionary-en": "^3.0.1",
     "jest": "^25.4.0",
     "remark": "^13.0.0",
+    "retext-assuming": "^1.0.0",
+    "retext-contractions": "^4.0.0",
+    "retext-diacritics": "^3.0.0",
+    "retext-indefinite-article": "^2.0.1",
+    "retext-quotes": "^4.0.0",
+    "retext-profanities": "^6.1.0",
+    "retext-redundant-acronyms": "^3.0.0",
     "retext-repeated-words": "^3.0.0",
     "retext-sentence-spacing": "^4.0.0",
     "retext-spell": "^4.0.0"
