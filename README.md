@@ -90,8 +90,8 @@ A `retext` processor created by chaining `unified`'s `use` method on:
 
 ###### `autofix`
 
-This is imported from the current package, `remark-autofix`.
-It applies fixes to markdown from all supported `vfile` messages emitted from `retextProcessor`
+This is imported from this package, `remark-autofix`.
+It applies fixes to markdown from all supported `vfile` messages emitted from `retextProcessor`.
 
 ###### `options`
 
