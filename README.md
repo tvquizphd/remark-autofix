@@ -8,16 +8,6 @@ to apply fixes from warnings raised by [retext](https://github.com/retextjs/rete
 The fixes are applied to the markdown abstract syntax tree when running
 [remark-retext](https://github.com/remarkjs/remark-retext) in bridge mode.
 
-This repository works in conjunction with
-
-- the `remark` processor
-- the `remark-retext` processor
-- A `retext` processor created by chaining [unified](https://github.com/unifiedjs/unified)'s `use` method on:
-    - a parser such as [retext-english](https://github.com/retextjs/retext/tree/main/packages/retext-english)
-    - one or more `retext` plugins listed below to emit `vfile` messages
-
-The plugin works with [`mdast`](https://github.com/syntax-tree/mdast) to represent markdown and [`nlcst`](https://github.com/syntax-tree/nlcst) to represent text.
-
 ## Supported Plugins
 
 By default, this plugin only fixes `vfile` messages emitted from the following `retext` plugins:
@@ -125,6 +115,18 @@ For supported plugins, each `message` has the following relevant custom properti
   - `expected` array of strings. For certain plugins, the array may be empty to indicate that the `actual` value should be removed.
 
 If null is returned, the message will be ignored. If a string is returned, this plugin will attempt to fix `mdast` `Literal` nodes within `message.location`, replacing `actual` text with the returned text. If multiple messages have overlapping `location` ranges, this plugin will cover the full extent of the overlapping `location` ranges with the mode of returned strings for that `location` range, preserving the `mdast` nodes with the most formatting. If there is no mode, the string from the first message raised will be used.
+
+## Ecosystem
+
+This repository works in conjunction with
+
+- the `remark` processor
+- the `remark-retext` processor
+- A `retext` processor created by chaining [unified](https://github.com/unifiedjs/unified)'s `use` method on:
+    - a parser such as [retext-english](https://github.com/retextjs/retext/tree/main/packages/retext-english)
+    - one or more `retext` plugins listed below to emit `vfile` messages
+
+The plugin works with [`mdast`](https://github.com/syntax-tree/mdast) to represent markdown and [`nlcst`](https://github.com/syntax-tree/nlcst) to represent text.
 
 ## License
 
