@@ -124,7 +124,7 @@ This repository works in conjunction with
 - the `remark-retext` processor
 - A `retext` processor created by chaining [unified](https://github.com/unifiedjs/unified)'s `use` method on:
     - a parser such as [retext-english](https://github.com/retextjs/retext/tree/main/packages/retext-english)
-    - one or more `retext` plugins listed below to emit `vfile` messages
+    - one or more `retext` [supported](https://github.com/tvquizphd/remark-autofix/blob/main/README.md#supported-plugins) plugins to emit `vfile` messages
 
 The plugin works with [`mdast`](https://github.com/syntax-tree/mdast) to represent markdown and [`nlcst`](https://github.com/syntax-tree/nlcst) to represent text.
 
