@@ -86,7 +86,7 @@ const extract_fixes = (mdast, treeMap, options) => {
     accepted.push(key);
   })
   const default_fixer = ({expected}) => {
-    return (expected?.length)? expected[0] : null
+    return (expected && expected.length)? expected[0] : null
   }
   const copySpellMap = new Map();
   file.messages.forEach((message) => {
