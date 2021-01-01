@@ -112,7 +112,7 @@ For supported plugins, each `message` has the following relevant custom properti
   - `expected` array of strings. For certain plugins, the array may be empty to indicate that the `actual` value should be removed.
 
 **Return**:
-  - (String or null)
+  - (string or `null`)
 
 The plugin takes no action if the function returns `null`. A returned string becomes the sole value to consider from the `message`.
 The plugin evaluates all returned values from partially overlapping `location` ranges for the value of a single replacement.
