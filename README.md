@@ -114,7 +114,7 @@ For supported plugins, each `message` has the following relevant custom properti
   - `actual` string identifying the part of the `vfile` that should be altered or removed.
   - `expected` array of strings. For certain plugins, the array may be empty to indicate that the `actual` value should be removed.
 
-If null is returned, the `message` is ignored. A returned string becomes the sole value to consider from the `message`.
+The plugin ignores the `message` if the function returns `null`. A returned string becomes the sole value to consider from the `message`.
 The plugin evaluates all returned values from partially overlapping `location` ranges for the value of a single replacement.
 The plugin replaces all `mdast` nodes in the range with a single `mdast` node taking on the following value:
   - If possible, the unique [mode](https://mathworld.wolfram.com/Mode.html) of the values returned for all overlapping messages
