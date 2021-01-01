@@ -43,7 +43,7 @@ method must occur in the following order with the following arguments:
 2. `use(autofix[, options])`
     - for the options parameter, see the [API](https://github.com/tvquizphd/remark-autofix#API).
 
-### Fix repeated words in Markdown
+### Remove repeated words in Markdown
 
 With [retext-repeated-words](https://github.com/retextjs/retext-repeated-words):
 
@@ -73,6 +73,43 @@ The `outputMarkdown` should be:
 This [link](https://example.com/) is not duplicated.
 
 ```
+
+### Censor profanities in Markdown
+
+With [retext-repeated-words](https://github.com/retextjs/retext-repeated-words):
+
+```js
+const remark = require('remark');
+const unified = require('unified');
+const english = require('retext-english');
+const remark2retext = require('remark-retext');
+const profanities = require('retext-profanities');
+const autofix = require('remark-autofix');
+
+const inputMarkdown = `Ah geez, you are not a loser.
+`
+const processor = remark().use(
+  remark2retext, unified().use(english).use(profanities)
+).use(autofix, {
+  fixers: {
+    'retext-profanities': (message) => {
+    // Censor all but first letter of certain cuss words
+    if (message.profanitySeverity >= 2 ) {
+      return message.actual.replace(/\B./g,'-')
+    }
+  }
+});
+
+const outputMarkdown = processor.processSync(inputMarkdown).toString();
+```
+
+The `outputMarkdown` should be:
+
+```md
+Ah g---, you are not a l----.
+
+```
+
 
 ## API
 
