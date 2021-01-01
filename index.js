@@ -106,25 +106,26 @@ const extract_fixes = (mdast, treeMap, options) => {
   file.messages.forEach((message) => {
     if (accepted.includes(message.source)) {
       const fixer = fixers[message.source] || default_fixer;
-      let [start, end, expected] = [
+      let [start, end, only_expected] = [
         message.location.start.offset,
         message.location.end.offset,
         fixer(message)
       ];
       if (message.source === "retext-spell") {
-        if (expected) {
-          copySpellMap.set(message.actual, expected);
+        if (only_expected) {
+          copySpellMap.set(message.actual, only_expected);
         } else {
-          expected = copySpellMap.get(message.actual);
+          only_expected = copySpellMap.get(message.actual);
         }
       }
       // Filter messages in relevant paragraph
       if (start < min_start || end > max_end) {
         return;
       }
-      if ([start, end, expected].every((v) => v != null)) {
+      if ([start, end, only_expected].every((v) => v != null)) {
         fixes.push({
-          expected: [expected],
+          actual: message.actual,
+          expected: [only_expected],
           start,
           end
         });
@@ -144,19 +145,25 @@ const extract_fixes = (mdast, treeMap, options) => {
         [fix.start, fix.end]
       );
       if (top_overlap) {
-        if (top_fix.start == fix.start) {
-          top_fix.n_same_start += 1;
-        }
         top_fix.end = Math.max(top_fix.end, fix.end);
-        top_fix.expected.push(fix.expected[0]);
+        // Replace existing expected values fixed by current fix
+        top_fix.expected = top_fix.expected.map((expected) => {
+          return (fix.actual === expected)? fix.expected[0] : expected
+        })
+        // Only track fixes with new expected values
+        if (!top_fix.expected.includes(fix.expected[0])) {
+          top_fix.expected.push(fix.expected[0]);
+          if (top_fix.start == fix.start) {
+            top_fix.n_same_start += 1;
+          }
+        }
         return merged_fixes;
       }
     }
+    delete fix.actual;
     merged_fixes.push({
+      ...fix,
       n_same_start: 1,
-      expected: fix.expected,
-      start: fix.start,
-      end: fix.end
     });
     return merged_fixes;
   }, []);
@@ -228,28 +235,6 @@ const text_to_children = (str) => {
   });
 };
 
-const find_mode = (arr) => {
-  if (arr.length == 1) {
-    return arr[0]
-  }
-  const {mode, maxFreq, vMapping} = arr.reduce(
-    (state, item) => {
-      var val = (state.vMapping[item] = (state.vMapping[item] || 0) + 1);
-      if (val > state.maxFreq) {
-        state.maxFreq = val;
-        state.mode = item;
-      }
-      return state;
-    },
-    { mode: null, maxFreq: -Infinity, vMapping: {} }
-  );
-  const minFreq = Math.min(...Object.values(vMapping))
-  if (minFreq == maxFreq) {
-    return null
-  }
-  return mode
-};
-
 const longest_common_substring = (s1, s2) => {
   const n_row = s1.length + 1;
   const n_col = s2.length + 1;
@@ -269,23 +254,19 @@ const longest_common_substring = (s1, s2) => {
 }
 
 const select_expected = (expected, n_same_start, text_remove) => {
-  // Use mode of expected values by default
-  const only_expected = find_mode(expected)
-  if (only_expected == null) {
-    // Use first expected value if no mode and one definitve first expected value
-    if (n_same_start <= 1) {
-      return expected[0] || ''
-    }
-    /* Use expected value with longest common substring in source text
-       in case of no mode and multiple values with the same start */
-    const same_start_expected = expected.slice(0, n_same_start);
-    return same_start_expected.sort((a, b) => {
-      return (
-        longest_common_substring(text_remove, b) -
-        longest_common_substring(text_remove, a)
-      );
-    })[0] || '';
+  // Use first expected value if one definitve first expected value
+  if (n_same_start <= 1) {
+    return expected[0] || ''
   }
+  /* Use expected value with longest common substring in source text
+     in case of multiple values with the same start */
+  const same_start_expected = expected.slice(0, n_same_start);
+  return same_start_expected.sort((a, b) => {
+    return (
+      longest_common_substring(text_remove, b) -
+      longest_common_substring(text_remove, a)
+    );
+  })[0] || '';
   return only_expected
 }
 

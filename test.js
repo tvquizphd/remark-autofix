@@ -42,6 +42,10 @@ describe("remark-autofix", () => {
       .use(quotes, {preferred: 'straight'})
       .use(contractions, {straight: true})
     ],
+    ['indefinite-article-repeated',
+      unified().use(english)
+      .use(indefiniteArticle).use(repeated)
+    ],
     ['indefinite-article-diacritics',
       unified().use(english)
       .use(indefiniteArticle).use(diacritics)
@@ -54,6 +58,11 @@ describe("remark-autofix", () => {
   const process = async (input, i, options={}) => {
     const processor = remark().use(remark2retext, retext_processors.get(i))
     return (await processor.use(autofix, options).process(input)).toString()
+  };
+
+  const process_callback = (input, i, options={}, callback=null) => {
+    const processor = remark().use(remark2retext, retext_processors.get(i))
+    return processor.use(autofix, options).process(input, callback)
   };
 
   /*
@@ -120,6 +129,19 @@ Ma ma mow, pa, ma mow, pa
     const expected = `I yam what I yam.
 `;
     const output = await process(input, 'repeated-spell');
+    expect(output).toBe(expected);
+  });
+
+  /*
+   * Test repeated words and indefinite articles
+   */
+
+  it("replace many incorrect indefinite articles with single correct indefinite article", async () => {
+    const input = `Eat a apple an an an an an day.
+`;
+    const expected = `Eat an apple a day.
+`;
+    const output = await process(input, 'indefinite-article-repeated');
     expect(output).toBe(expected);
   });
 
