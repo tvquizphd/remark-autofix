@@ -137,7 +137,7 @@ Ma ma mow, pa, ma mow, pa
    */
 
   it("replace many incorrect indefinite articles with single correct indefinite article", async () => {
-    const input = `Eat a apple an an an an an day.
+    const input = `Eat a a a a apple an an an an day.
 `;
     const expected = `Eat an apple a day.
 `;
