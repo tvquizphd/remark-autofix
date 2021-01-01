@@ -117,8 +117,7 @@ For supported plugins, each `message` has the following relevant custom properti
 The plugin ignores the `message` if the function returns `null`. A returned string becomes the sole value to consider from the `message`.
 The plugin evaluates all returned values from partially overlapping `location` ranges for the value of a single replacement.
 The plugin replaces all `mdast` nodes in the range with a single `mdast` node taking on the following value:
-  - If possible, the unique [mode](https://mathworld.wolfram.com/Mode.html) of the values returned for all overlapping messages
-  - Else if possible, the first (by `location.start`) of the values returned for all overlapping messages
+  - If possible, the first (by `location.start`) of the unique values returned for all overlapping messages
   - Else, a value with the maximum [longest common substring](https://en.wikipedia.org/wiki/Longest_common_substring_problem) with the full range of overlapping messages
 
 ## Ecosystem
