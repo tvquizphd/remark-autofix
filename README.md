@@ -104,17 +104,17 @@ See [supported plugin names](https://github.com/tvquizphd/remark-autofix#Support
 
 Each function provided in `fixers` should have the following signature:
 
-Parameters:
-  - message ([vfile-message](https://github.com/vfile/vfile-message))
-
-Return:
-  - (String or null)
+**Parameters**:
+  - `message` ([vfile-message](https://github.com/vfile/vfile-message))
 
 For supported plugins, each `message` has the following relevant custom properties in addition to the `vfile-message` standard:
   - `actual` string identifying the part of the `vfile` that should be altered or removed.
   - `expected` array of strings. For certain plugins, the array may be empty to indicate that the `actual` value should be removed.
 
-The plugin ignores the `message` if the function returns `null`. A returned string becomes the sole value to consider from the `message`.
+**Return**:
+  - (String or null)
+
+The plugin takes no action if the function returns `null`. A returned string becomes the sole value to consider from the `message`.
 The plugin evaluates all returned values from partially overlapping `location` ranges for the value of a single replacement.
 The plugin replaces all `mdast` nodes in the range with a single `mdast` node taking on the following value:
   - If possible, the first (by `location.start`) of the unique values returned for all overlapping messages
