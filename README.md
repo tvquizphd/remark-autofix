@@ -114,7 +114,12 @@ For supported plugins, each `message` has the following relevant custom properti
   - `actual` string identifying the part of the `vfile` that should be altered or removed.
   - `expected` array of strings. For certain plugins, the array may be empty to indicate that the `actual` value should be removed.
 
-If null is returned, the message will be ignored. If a string is returned, this plugin will attempt to fix `mdast` `Literal` nodes within `message.location`, replacing `actual` text with the returned text. If multiple messages have overlapping `location` ranges, this plugin will cover the full extent of the overlapping `location` ranges with the mode of returned strings for that `location` range, preserving the `mdast` nodes with the most formatting. If there is no mode, the string from the first message raised will be used.
+If null is returned, the `message` is ignored. A returned string becomes the sole value to consider from the `message`.
+The plugin evaluates all returned values from partially overlapping `location` ranges for the value of a single replacement.
+The plugin replaces all `mdast` nodes in the range with a single `mdast` node taking on the following value:
+  - If possible, the unique [mode](https://mathworld.wolfram.com/Mode.html) of the values returned for all overlapping messages
+  - Else if possible, the first (by `location.start`) of the values returned for all overlapping messages
+  - Else, a value with the [longest common substring](https://en.wikipedia.org/wiki/Longest_common_substring_problem) with the full range of overlapping messages
 
 ## Ecosystem
 

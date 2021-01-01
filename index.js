@@ -64,6 +64,20 @@ const match_tree_literals = (tree, offsets = [], ancestor = "") => {
   return literals;
 };
 
+const node_or_child_in_list = (list, node) => {
+  if (list.includes(node)) {
+    return true;
+  }
+  if (node.children) {
+    for (const child of node.children) {
+      if (list.includes(child)) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 const extract_fixes = (mdast, treeMap, options) => {
   let fixes = [];
   const last_mdast_i = treeMap.size - 1;
@@ -117,33 +131,38 @@ const extract_fixes = (mdast, treeMap, options) => {
       }
     }
   });
+  // Sort fixes from first to last
+  fixes = fixes.sort((fix_a, fix_b) => {
+    return Math.sign(fix_a.start - fix_b.start)
+  })
+  // Merge fixes with overlapping locations
   fixes = fixes.reduce((merged_fixes, fix) => {
-    const [to_keep, to_merge] = merged_fixes.reduce(
-      ([_keep, _merge], _fix) => {
-        const _overlap = is_overlap(
-          [fix.start, fix.end],
-          [_fix.start, _fix.end]
-        );
-        return [
-          _overlap ? _keep : _keep.concat(_fix),
-          _overlap ? _merge.concat(_fix) : _merge
-        ];
-      },
-      [[], []]
-    );
-    /*if (to_merge.length > 0) {
-      if (to_merge[0].expected.length > 1) {
-        console.log('TODO')
+    if (merged_fixes.length) {
+      const top_fix = merged_fixes[merged_fixes.length - 1];
+      const top_overlap = is_overlap(
+        [top_fix.start, top_fix.end],
+        [fix.start, fix.end]
+      );
+      if (top_overlap) {
+        if (top_fix.start == fix.start) {
+          top_fix.n_same_start += 1;
+        }
+        top_fix.end = Math.max(top_fix.end, fix.end);
+        top_fix.expected.push(fix.expected[0]);
+        return merged_fixes;
       }
-    }*/
-    to_keep.push({
-      expected: fix.expected.concat(...to_merge.map((_fix) => _fix.expected)),
-      start: Math.min(fix.start, ...to_merge.map((_fix) => _fix.start)),
-      end: Math.max(fix.end, ...to_merge.map((_fix) => _fix.end))
+    }
+    merged_fixes.push({
+      n_same_start: 1,
+      expected: fix.expected,
+      start: fix.start,
+      end: fix.end
     });
-    return to_keep;
+    return merged_fixes;
   }, []);
-  fixes = fixes.map(({ expected, start, end }) => {
+  // Add mdast list with deletions and select one expected value
+  fixes = fixes.map((fix) => {
+    const { start, end } = fix;
     const mdast_list = match_tree_literals(
       mdast,
       [start, end],
@@ -153,41 +172,26 @@ const extract_fixes = (mdast, treeMap, options) => {
       const nlcst_list = match_tree_literals(nlcst, [start, end]).map(
         (_v) => _v.node
       );
-      const child_in_list = (children) => {
-        if (children) {
-          for (const child of children) {
-            if (nlcst_list.includes(child)) {
-              return true;
-            }
-          }
-        }
-        return false;
-      };
       const nlcst_children = nlcst_to_children(nlcst, (node) => {
-        const in_list = nlcst_list.includes(node);
-        return in_list || child_in_list(node.children);
+        return node_or_child_in_list(nlcst_list, node);
       });
       return {
         ...v,
         delMap: nlcst_children.reduce((delMap, { node, parent }) => {
           const nlcst_remove = delMap.get(parent) || [];
-          delMap.set(
-            parent,
-            nlcst_remove.concat({
-              node: node,
-              action: -1
-            })
-          );
+          nlcst_remove.push({
+            node: node,
+            action: -1
+          });
+          delMap.set(parent, nlcst_remove);
           return delMap;
         }, new Map())
       };
     });
     return {
-      max_priority: Math.max(...mdast_list.map((v) => v.priority)),
+      ...fix,
       mdast_list,
-      expected,
-      start,
-      end
+      max_priority: Math.max(...mdast_list.map((v) => v.priority))
     };
   });
   // Later code relies on sorted fixes
@@ -246,15 +250,60 @@ const find_mode = (arr) => {
   return mode
 };
 
+const longest_common_substring = (s1, s2) => {
+  const n_row = s1.length + 1;
+  const n_col = s2.length + 1;
+  const table = new Int16Array(n_row * n_col).fill(0);
+  const t_i = (r, c) => r * n_col + c;
+
+  let longest = 0;
+  for (let r = 1; r < n_row; r++) {
+    for (let c = 1; c < n_col; c++) {
+      if (s1[r - 1] === s2[c - 1]) {
+        table[t_i(r, c)] = table[t_i(r - 1, c - 1)] + 1;
+        longest = Math.max(table[t_i(r, c)], longest);
+      }
+    }
+  }
+  return longest;
+}
+
+const select_expected = (expected, n_same_start, text_remove) => {
+  // Use mode of expected values by default
+  const only_expected = find_mode(expected)
+  if (only_expected == null) {
+    // Use first expected value if no mode and one definitve first expected value
+    if (n_same_start <= 1) {
+      return expected[0] || ''
+    }
+    /* Use expected value with longest common substring in source text
+       in case of no mode and multiple values with the same start */
+    const same_start_expected = expected.slice(0, n_same_start);
+    return same_start_expected.sort((a, b) => {
+      return (
+        longest_common_substring(text_remove, b) -
+        longest_common_substring(text_remove, a)
+      );
+    })[0] || '';
+  }
+  return only_expected
+}
+
+const list_additions = ({expected, n_same_start}, text_remove) => {
+  const only_expected = select_expected(expected, n_same_start, text_remove);
+  const new_children = text_to_children(only_expected);
+  return new_children.map(({ node }) => {
+    return {
+      action: 1,
+      node: node
+    };
+  });
+}
+
 const check_fixes = (fixes, treeMap) => {
   const childrenMap = new Map();
-  fixes.forEach(({ expected, max_priority, mdast_list }) => {
-    let expected_string = find_mode(expected)
-    if (expected_string == null) {
-      // Use first expected value if no mode
-      expected_string = expected[0] || ''
-    }
-    const new_children = text_to_children(expected_string);
+  fixes.forEach((fix) => {
+    const { max_priority, mdast_list } = fix;
     const priority_node = mdast_list.find((v) => {
       return v.priority >= max_priority;
     }).node;
@@ -265,25 +314,19 @@ const check_fixes = (fixes, treeMap) => {
       };
       let parentCount = 0;
       delMap.forEach((nlcst_remove, parent) => {
-        let nlcst_add = [];
-        // Only add if node has priority and on first parent
-        if (priority_node === v.node && parentCount === 0) {
-          nlcst_add = new_children.map(({ node }) => {
-            return {
-              action: 1,
-              node: node
-            };
-          });
-        }
-        // Check if adding and removing cancel out
-        const text_add = nlcst_to_text.stringify({
-          type: "SentenceNode",
-          children: nlcst_add.map((add) => add.node)
-        });
+        // Calculate the text to remove from parent of v
         const text_remove = nlcst_to_text.stringify({
           type: "SentenceNode",
           children: nlcst_remove.map((remove) => remove.node)
         });
+        // Only add if node has priority and on first parent of v
+        const should_add = (priority_node === v.node && parentCount === 0);
+        let nlcst_add = should_add? list_additions(fix, text_remove) : [];
+        const text_add = nlcst_to_text.stringify({
+          type: "SentenceNode",
+          children: nlcst_add.map((add) => add.node)
+        });
+        // Check if adding and removing cancel out
         if (text_add === text_remove) {
           nlcst_add = [];
           nlcst_remove = [];

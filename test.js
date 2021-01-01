@@ -25,9 +25,17 @@ describe("remark-autofix", () => {
       unified().use(english).use(repeated)
       .use(redundantAcronyms)
     ],
+    ['repeated-spell',
+      unified().use(english).use(repeated)
+      .use(spell, dictionary_en)
+    ],
     ['spacing-spell',
       unified().use(english).use(spacing)
       .use(spell, dictionary_en)
+    ],
+    ['spell-contractions',
+      unified().use(english).use(spell, dictionary_en)
+      .use(contractions, {straight: true})
     ],
     ['quotes-contractions',
       unified().use(english)
@@ -103,6 +111,19 @@ Ma ma mow, pa, ma mow, pa
   });
 
   /*
+   * Test spelling and repeated words
+   */
+
+  it("replace repeated mispelled word with single correct word", async () => {
+    const input = `I yamm yamm what I yamm yamm.
+`;
+    const expected = `I yam what I yam.
+`;
+    const output = await process(input, 'repeated-spell');
+    expect(output).toBe(expected);
+  });
+
+  /*
    * Test sentence spacing and spelling
    */
 
@@ -146,6 +167,19 @@ spell
     const expected = `"This is just a quote"... don't worry!
 `;
     const output = await process(input, 'quotes-contractions');
+    expect(output).toBe(expected);
+  });
+
+  /*
+   * Test contractions and spelling
+   */
+
+  it("handle conflict between contraction and spelling", async () => {
+    const input = `If it were done, when tis done, then twere well it were done quickly
+`;
+    const expected = `If it were done, when 'tis done, then 'twere well it were done quickly
+`;
+    const output = await process(input, 'spell-contractions');
     expect(output).toBe(expected);
   });
 
