@@ -18,6 +18,9 @@ const autofix = require(".");
 
 describe("remark-autofix", () => {
   const retext_processors = new Map([
+    ['none',
+      unified().use(english)
+    ],
     ['repeated',
       unified().use(english).use(repeated)
     ],
@@ -75,6 +78,21 @@ describe("remark-autofix", () => {
     const expected = `This [link](https://example.com/) is not duplicated.
 `;
     const output = await process(input, 'repeated');
+    expect(output).toBe(expected);
+  });
+
+  it("remove doubled word from heading and list, keeping link", async () => {
+    const input = `## Repeated heading heading
+
+*   *here* here is a link [link](https://example.com/)
+*   here **here** is another link [link](https://example.com/)
+`;
+    const expected = `## Repeated heading
+
+*   *here* is a [link](https://example.com/)
+*   **here** is another [link](https://example.com/)
+`;
+    const output = await process(input, 'repeated', {debug: true});
     expect(output).toBe(expected);
   });
 

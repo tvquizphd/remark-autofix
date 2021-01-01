@@ -27,7 +27,7 @@ const is_overlap_nodes = (node, _node) => {
   return is_overlap([start, end], [_start, _end]);
 };
 
-const match_tree_literals = (tree, offsets = [], ancestor = "") => {
+const match_tree_literals = (tree, offsets=[], use_priority=false) => {
   const literals = [];
   if (!tree) {
     return literals;
@@ -47,9 +47,9 @@ const match_tree_literals = (tree, offsets = [], ancestor = "") => {
     }
     if (should_push) {
       let priority = 0;
-      if (ancestor) {
+      if (use_priority) {
         priority = ancestors.reverse().reduce((v, a) => {
-          if (unist_is(a, ancestor)) {
+          if (unist_is(a, tree.type)) {
             return v;
           }
           return v + 1;
@@ -82,7 +82,7 @@ const extract_fixes = (mdast, treeMap, options) => {
   let fixes = [];
   const last_mdast_i = treeMap.size - 1;
   const mdast_nodes = Array.from(treeMap.keys());
-  // Filter messages in releant paragraph
+  // Filter messages in relevant nodes
   const min_start = mdast_nodes[0].position.start.offset;
   const max_end = mdast_nodes[last_mdast_i].position.end.offset;
   const accepted = [
@@ -118,7 +118,7 @@ const extract_fixes = (mdast, treeMap, options) => {
           only_expected = copySpellMap.get(message.actual);
         }
       }
-      // Filter messages in relevant paragraph
+      // Filter messages in relevant nodes
       if (start < min_start || end > max_end) {
         return;
       }
@@ -170,31 +170,28 @@ const extract_fixes = (mdast, treeMap, options) => {
   // Add mdast list with deletions and select one expected value
   fixes = fixes.map((fix) => {
     const { start, end } = fix;
-    const mdast_list = match_tree_literals(
-      mdast,
-      [start, end],
-      "paragraph"
-    ).map((v) => {
-      const nlcst = treeMap.get(v.node);
-      const nlcst_list = match_tree_literals(nlcst, [start, end]).map(
-        (_v) => _v.node
-      );
-      const nlcst_children = nlcst_to_children(nlcst, (node) => {
-        return node_or_child_in_list(nlcst_list, node);
+    const mdast_list = match_tree_literals(mdast, [start, end], true)
+      .map((v) => {
+        const nlcst = treeMap.get(v.node);
+        const nlcst_list = match_tree_literals(nlcst, [start, end]).map(
+          (_v) => _v.node
+        );
+        const nlcst_children = nlcst_to_children(nlcst, (node) => {
+          return node_or_child_in_list(nlcst_list, node);
+        });
+        return {
+          ...v,
+          delMap: nlcst_children.reduce((delMap, { node, parent }) => {
+            const nlcst_remove = delMap.get(parent) || [];
+            nlcst_remove.push({
+              node: node,
+              action: -1
+            });
+            delMap.set(parent, nlcst_remove);
+            return delMap;
+          }, new Map())
+        };
       });
-      return {
-        ...v,
-        delMap: nlcst_children.reduce((delMap, { node, parent }) => {
-          const nlcst_remove = delMap.get(parent) || [];
-          nlcst_remove.push({
-            node: node,
-            action: -1
-          });
-          delMap.set(parent, nlcst_remove);
-          return delMap;
-        }, new Map())
-      };
-    });
     return {
       ...fix,
       mdast_list,
@@ -359,13 +356,13 @@ const nlcst_to_text = unified().use(retext_stringify);
 
 const p_to_nlcst = unified().use(remark_retext, retext_english.Parser);
 
-const paragraph_handler = (p, options) => {
+const mdast_handler = (mdast_tree, options) => {
   let fixMap = new Map();
   // Extract all fixes from computed nlcst
   p_to_nlcst()
     .use(() => {
       return (tree, _) => {
-        const mdast_list = match_tree_literals(p, [], "paragraph");
+        const mdast_list = match_tree_literals(mdast_tree, [], true);
         const treeMap = mdast_list.reduce((tree_map, mdast) => {
           const subtree = unist_filter(tree, (node) => {
             return is_overlap_nodes(mdast.node, node);
@@ -375,14 +372,14 @@ const paragraph_handler = (p, options) => {
           }
           return tree_map;
         }, new Map());
-        const fixes = extract_fixes(p, treeMap, options);
+        const fixes = extract_fixes(mdast_tree, treeMap, options);
         fixMap = check_fixes(fixes, treeMap);
         return tree;
       };
     })
-    .runSync(p, options.file);
+    .runSync(mdast_tree, options.file);
   // Apply all the fixes to all of the mdast nodes
-  unist_visit(p, (node) => {
+  unist_visit(mdast_tree, (node) => {
     const is_literal = node.value != null;
     if (!is_literal) {
       return node;
@@ -394,7 +391,7 @@ const paragraph_handler = (p, options) => {
   })
   // Removes all empty literal nodes
   // Such as when *dup* *dup* -> *dup* **
-  unist_remove(p, (node) => {
+  unist_remove(mdast_tree, (node) => {
     const is_literal = node.value != null;
     if (!is_literal) {
       return false;
@@ -405,8 +402,14 @@ const paragraph_handler = (p, options) => {
 
 function remark_autofix (options) {
   return (tree, file) => {
+    unist_visit(tree, 'heading', (h) => {
+      mdast_handler(h, {
+        fixers: {},
+        ...options, file
+      })
+    });
     unist_visit(tree, 'paragraph', (p) => {
-      paragraph_handler(p, {
+      mdast_handler(p, {
         fixers: {},
         ...options, file
       })
