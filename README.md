@@ -76,7 +76,7 @@ This [link](https://example.com/) is not duplicated.
 
 ### Censor profanities in Markdown
 
-With [retext-repeated-words](https://github.com/retextjs/retext-repeated-words):
+With [retext-profanities](https://github.com/retextjs/retext-profanities):
 
 ```js
 const remark = require('remark');
@@ -109,7 +109,6 @@ The `outputMarkdown` should be:
 Ah g---, you are not a l----.
 
 ```
-
 
 ## API
 
