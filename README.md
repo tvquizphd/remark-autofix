@@ -119,7 +119,7 @@ The plugin evaluates all returned values from partially overlapping `location` r
 The plugin replaces all `mdast` nodes in the range with a single `mdast` node taking on the following value:
   - If possible, the unique [mode](https://mathworld.wolfram.com/Mode.html) of the values returned for all overlapping messages
   - Else if possible, the first (by `location.start`) of the values returned for all overlapping messages
-  - Else, a value with the [longest common substring](https://en.wikipedia.org/wiki/Longest_common_substring_problem) with the full range of overlapping messages
+  - Else, a value with the maximum [longest common substring](https://en.wikipedia.org/wiki/Longest_common_substring_problem) with the full range of overlapping messages
 
 ## Ecosystem
 
