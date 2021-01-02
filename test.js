@@ -59,12 +59,12 @@ describe("remark-autofix", () => {
   ]);
 
   const process = async (input, i, options={}) => {
-    const processor = remark().use(remark2retext, retext_processors.get(i))
+    const processor = remark().use(remark2retext, retext_processors.get(i)())
     return (await processor.use(autofix, options).process(input)).toString()
   };
 
   const process_callback = (input, i, options={}, callback=null) => {
-    const processor = remark().use(remark2retext, retext_processors.get(i))
+    const processor = remark().use(remark2retext, retext_processors.get(i)())
     return processor.use(autofix, options).process(input, callback)
   };
 
@@ -92,7 +92,7 @@ describe("remark-autofix", () => {
 *   *here* is a [link](https://example.com/)
 *   **here** is another [link](https://example.com/)
 `;
-    const output = await process(input, 'repeated', {debug: true});
+    const output = await process(input, 'repeated');
     expect(output).toBe(expected);
   });
 
