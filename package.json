@@ -19,9 +19,9 @@
     "unified": "^9.2.0",
     "unist-util-filter": "^2.0.3",
     "unist-util-is": "^4.0.4",
+    "unist-util-modify-children": "^2.0.0",
     "unist-util-position": "^3.1.0",
     "unist-util-remove": "^2.0.1",
-    "unist-util-remove-position": "^3.0.0",
     "unist-util-visit": "^2.0.3",
     "unist-util-visit-parents": "^3.1.1"
   },
