@@ -171,8 +171,8 @@ Ma ma mow, pa, ma mow, pa
     const input = `Lorem ipsum dolor sit amet, consectetur adipiscing elit.  Nulla pharetra erat purus, eget congue justo laoreet id.
 Nunc quis tempor nunc, in varius ante.  Aenean consectetur lacus sed odio lobortis, quis finibus tortor sagittis.
 `;
-    const expected = `Lore gypsum dolor sit met, consectetur adipiscing elite. Null pharetra drat Purus, get tongue gusto laoreet id.
-Nun ques temper nun, in varies ante. Aegean consectetur LAC'S red Odin lobortis, ques minibus torpor sagittis.
+    const expected = `Loren gypsum dolor sit abet, consectetur adipiscing emit. Nulls pharetra drat purrs, get tongue gusto laoreet id.
+Nun quid temper nun, in varies ante. Aegean consectetur laces seed Odin lobortis, quid minibus torpor sagittis.
 `;
     const output = await process(input, 'spacing-spell');
     expect(output).toBe(expected);
