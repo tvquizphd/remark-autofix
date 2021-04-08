@@ -10,17 +10,38 @@ const unist_visit = require("unist-util-visit");
 const unist_is = require("unist-util-is");
 const unified = require("unified");
 
+const are_all_int = (a) => {
+  // Also handles null, undefined, NaN, '', {}, etc
+  return a.every((x) => Math.round(x) === x);
+}
+
+const is_within = ([start, end], [_start, _end]) => {
+  if (!are_all_int([_start, start, end, _end])) {
+    return false;
+  }
+  // is _start, _end within start, end?
+  return _start >= start && _end <= end;
+};
+
+const is_node_within = ([start, end], _node) => {
+  const _node_position = unist_position(_node);
+  const _start = _node_position.start.offset;
+  const _end = _node_position.end.offset;
+  // is node within start, end?
+  return is_within([start, end], [_start, _end]);
+}
+
 const is_overlap = ([start, end], [_start, _end]) => {
-  if ([_start, start, end, _end].some((v) => v == null)) {
+  if (!are_all_int([_start, start, end, _end])) {
     return false;
   }
   return _start < end && start < _end;
 };
 
-const is_overlap_node = ([start, end], node) => {
-  const node_position = unist_position(node);
-  const _start = node_position.start.offset;
-  const _end = node_position.end.offset;
+const is_overlap_node = ([start, end], _node) => {
+  const _node_position = unist_position(_node);
+  const _start = _node_position.start.offset;
+  const _end = _node_position.end.offset;
   return is_overlap([start, end], [_start, _end]);
 };
 
@@ -58,7 +79,7 @@ const match_tree_literals = (tree, offsets=[], annotate=false, options=null) => 
   return literals;
 };
 
-const extract_fixes = (mdast, options) => {
+const extract_fixes = (mdast_tree, options) => {
   let fixes = [];
   const accepted = [
     "retext-spell",
@@ -70,7 +91,7 @@ const extract_fixes = (mdast, options) => {
     "retext-indefinite-article",
     "retext-redundant-acronyms"
   ];
-  const mdast_position = unist_position(mdast);
+  const mdast_position = unist_position(mdast_tree);
   const min_start = mdast_position.start.offset;
   const max_end = mdast_position.end.offset;
 
@@ -150,7 +171,7 @@ const extract_fixes = (mdast, options) => {
   // Add mdast list with deletions
   fixes = fixes.map((fix) => {
     const { start, end } = fix;
-    const mdast_list = match_tree_literals(mdast, [start, end], true, options);
+    const mdast_list = match_tree_literals(mdast_tree, [start, end], true, options);
     return {
       ...fix,
       mdast_list
@@ -219,9 +240,6 @@ const nlcst_label_parents = (tree) => {
   nlcst_modify_parents(tree, (parent) => {
     id ++;
     parent._id = id;
-    parent.children.forEach((child, idx) => {
-      child._idx = idx;
-    });
   });
 }
 
@@ -255,30 +273,51 @@ const fix_to_expected = (fix, tree) => {
   return select_expected(expected, n_same_start, old_text);
 }
 
-const apply_fixes = (tree, old_children_map, new_children) => {
-  let first_parent = true;
+const apply_fix = (fix, tree, old_children_map, new_children) => {
+  const every_new_leaf = new_children.every(v => v.value != null);
+  const cannot_replace_children = (node) => {
+    return !every_new_leaf || !node.children;
+  };
+  const is_overlap_fix = (node) => {
+    return is_overlap_node([fix.start, fix.end], node);
+  };
+  const is_in_fix = (node) => {
+    return is_node_within([fix.start, fix.end], node);
+  };
+  let fixed = false;
+
   nlcst_modify_parents(tree, (parent) => {
-    old_children_map.forEach((old_children, id) => {
-      if (parent._id === id) {
-        const add = first_parent ? new_children : []
-        const old_idx = [
-          (old_children[0] || {})._idx || 0,
-          (old_children[old_children.length - 1] || {})._idx || 0
-        ];
-        const index = parent.children.findIndex((child) => {
-          return child._idx >= old_idx[0] && child._idx <= old_idx[1];
-        });
-        const first_idx = parent.children[index]._idx || 0;
-        const count = Math.min(
-          old_children.length - old_children.findIndex((child) => {
-            return child._idx === first_idx;
-          }),
-          parent.children.length - index
-        );
-        parent.children.splice(index, count, ...add);
-        first_parent = false;
-      }
-    });
+    if (old_children_map.has(parent._id)) {
+      const old_children = old_children_map.get(parent._id);
+      parent.children = parent.children.reduce((all_nodes, node) => {
+        if (is_overlap_fix(node)) {
+          // Remove the entire node
+          if (fixed) {
+            return all_nodes;
+          }
+          // Replace the entire node
+          if (is_in_fix(node) || cannot_replace_children(node)) {
+            fixed = true;
+            return all_nodes.concat(new_children);
+          }
+          // Replace only some children
+          node.children = node.children.reduce((child_nodes, child) => {
+            if (is_overlap_fix(child)) {
+              // Remove the child
+              if (fixed) {
+                return child_nodes;
+              }
+              // Replace the child
+              fixed = true;
+              return child_nodes.concat(new_children);
+            }
+            return child_nodes.concat([child]);
+          }, []);
+          return all_nodes.concat([node]);
+        }
+        return all_nodes.concat([node]);
+      }, []);
+    }
   });
 }
 
@@ -305,7 +344,7 @@ const check_fixes = (fixes, nlcst_tree, options) => {
         new_children = expected_children;
         max_depth = Infinity;
       }
-      apply_fixes(subtree, old_children_map, new_children);
+      apply_fix(fix, subtree, old_children_map, new_children);
       treeMap.set(v.node, subtree);
     });
   });

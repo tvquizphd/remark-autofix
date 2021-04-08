@@ -211,6 +211,19 @@ spell
   });
 
   /*
+   * Test contractions and mid-word apostrophes
+   */
+
+  it("replace smart apostrophes in the middle of a word", async () => {
+    const input = `Don’t hunt’n’peck.
+`;
+    const expected = `Don't hunt'n'peck.
+`;
+    const output = await process(input, 'quotes-contractions');
+    expect(output).toBe(expected);
+  });
+
+  /*
    * Test contractions and spelling
    */
 
